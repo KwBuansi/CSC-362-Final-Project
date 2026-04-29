@@ -129,6 +129,13 @@ function renderRadialChart({ rows, region, day }) {
     };
   };
 
+  const patternForLocale = (loc) => {
+    const key = String(loc ?? "").toLowerCase();
+    if (key === "urban") return "url(#pattern-urban-dots)";
+    if (key === "suburban") return "url(#pattern-suburban-diagonal)";
+    return styleForLocale(loc).fill;
+  };
+
   const formatValue = (v) => (Number.isFinite(v) ? d3.format(".1f")(v) : "N/A");
 
   const arc = d3.arc()
@@ -145,6 +152,56 @@ function renderRadialChart({ rows, region, day }) {
     // Add extra top padding so the 200 label + title fit.
     .attr("viewBox", [-width / 2, -height / 2 - chartTopPadding, width, height + chartTopPadding])
     .attr("style", "width: 100%; height: auto; font: 10px sans-serif;");
+
+  // Pattern fills (Urban = dots, Suburban = straight lines)
+  const defs = svg.append("defs");
+
+  defs.append("pattern")
+    .attr("id", "pattern-suburban-diagonal")
+    .attr("patternUnits", "userSpaceOnUse")
+    .attr("width", 8)
+    .attr("height", 8)
+    .call(p => p.append("rect")
+      .attr("width", 8)
+      .attr("height", 8)
+      .attr("fill", "rgba(233, 200, 81, 0.18)"))
+    // Use straight horizontal stripes to avoid visible tiled seams.
+    .call(p => p.append("line")
+      .attr("x1", 0)
+      .attr("y1", 2)
+      .attr("x2", 8)
+      .attr("y2", 2)
+      .attr("stroke", "rgba(184, 143, 0, 0.75)")
+      .attr("stroke-width", 2)
+      .attr("shape-rendering", "crispEdges"))
+    .call(p => p.append("line")
+      .attr("x1", 0)
+      .attr("y1", 6)
+      .attr("x2", 8)
+      .attr("y2", 6)
+      .attr("stroke", "rgba(184, 143, 0, 0.75)")
+      .attr("stroke-width", 2)
+      .attr("shape-rendering", "crispEdges"));
+
+  defs.append("pattern")
+    .attr("id", "pattern-urban-dots")
+    .attr("patternUnits", "userSpaceOnUse")
+    .attr("width", 10)
+    .attr("height", 10)
+    .call(p => p.append("rect")
+      .attr("width", 10)
+      .attr("height", 10)
+      .attr("fill", "rgba(23, 107, 89, 0.16)"))
+    .call(p => p.append("circle")
+      .attr("cx", 3)
+      .attr("cy", 3)
+      .attr("r", 2.3)
+      .attr("fill", "rgba(23, 107, 89, 0.75)"))
+    .call(p => p.append("circle")
+      .attr("cx", 8)
+      .attr("cy", 7)
+      .attr("r", 2.3)
+      .attr("fill", "rgba(23, 107, 89, 0.75)"));
 
   // Radial grid + labels (y axis) — draw BEFORE bars so it sits behind them.
   // Always draw exactly 4 benchmark circles at: 50, 100, 150, 200.
@@ -183,7 +240,7 @@ function renderRadialChart({ rows, region, day }) {
     .selectAll("g")
     .data(series)
     .join("g")
-      .attr("fill", d => styleForLocale(d.key).fill)
+      .attr("fill", d => patternForLocale(d.key))
       .attr("stroke", d => styleForLocale(d.key).stroke)
       .attr("stroke-width", 1.25)
       .attr("stroke-opacity", 1)
@@ -227,13 +284,7 @@ function renderRadialChart({ rows, region, day }) {
       .call(g => g.append("rect")
         .attr("width", 12)
         .attr("height", 12)
-        .attr("fill", (d) => {
-          // Keep legend swatches readable; use opaque-ish fill.
-          const { fill } = styleForLocale(d);
-          return String(d).toLowerCase() === "urban" ? "rgba(46, 204, 112, 0.45)"
-            : String(d).toLowerCase() === "suburban" ? "rgba(241, 196, 15, 0.9)"
-            : fill;
-        })
+        .attr("fill", (d) => patternForLocale(d))
         .attr("stroke", d => styleForLocale(d).stroke)
         .attr("stroke-width", 1))
       .call(g => g.append("text")
