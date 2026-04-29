@@ -1,11 +1,5 @@
 from collections import Counter
 from csv import DictReader, DictWriter
-from pathlib import Path
-
-
-ROOT_DIR = Path(__file__).resolve().parents[1]
-INPUT_FILE = ROOT_DIR / "data" / "archive" / "original_data.csv"
-OUTPUT_FILE = ROOT_DIR / "data" / "cleaned_data.csv"
 
 DAY_NAMES = {
     "Mon": "Monday",
@@ -33,7 +27,7 @@ def get_hour(order_time):
     return hour
 
 
-def clean_and_aggregate(input_file=INPUT_FILE, output_file=OUTPUT_FILE):
+def clean_and_aggregate(input_file="data/archive/original_data.csv", output_file="data/cleaned_data.csv"):
     orders_by_slot = Counter()
     regions = set()
 
@@ -79,4 +73,4 @@ def clean_and_aggregate(input_file=INPUT_FILE, output_file=OUTPUT_FILE):
 
 if __name__ == "__main__":
     row_count = clean_and_aggregate()
-    print(f"Wrote {row_count} rows to {OUTPUT_FILE}")
+    print(f"Wrote {row_count} rows to the output file")
