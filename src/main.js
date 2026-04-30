@@ -103,6 +103,9 @@ function renderRadialChart({ rows, region, day }) {
     .range([0, 2 * Math.PI])
     .align(0);
 
+  // Rotate slightly so hour 0 is exactly vertical (12 o'clock).
+  const angleOffset = -x.bandwidth() / 2;
+
   const benchmarkMax = 200;
   const dataMax = d3.max(series, s => d3.max(s, d => d[1])) ?? 0;
 
@@ -141,8 +144,8 @@ function renderRadialChart({ rows, region, day }) {
   const arc = d3.arc()
     .innerRadius(d => y(d[0]))
     .outerRadius(d => y(d[1]))
-    .startAngle(d => x(d.data.hour))
-    .endAngle(d => x(d.data.hour) + x.bandwidth())
+    .startAngle(d => x(d.data.hour) + angleOffset)
+    .endAngle(d => x(d.data.hour) + x.bandwidth() + angleOffset)
     .padAngle(1.5 / innerRadius)
     .padRadius(innerRadius);
 
@@ -213,7 +216,7 @@ function renderRadialChart({ rows, region, day }) {
     .attr("y", -y(200))
     .attr("dy", "-2.2em")
     .attr("font-weight", 700)
-    .attr("font-size", 14)
+    .attr("font-size", 28)
     .attr("fill", "white")
     .text(`${region} · ${day} — Average orders`);
 
@@ -228,12 +231,40 @@ function renderRadialChart({ rows, region, day }) {
       .call(g => g.append("text")
         .attr("y", d => -y(d))
         .attr("dy", "0.35em")
-        .attr("stroke", "#fff")
-        .attr("stroke-width", 5)
-        .text(d3.format("~s"))
-      .clone(true)
-        .attr("fill", "#000")
-        .attr("stroke", "none"));
+        .attr("stroke", "#aaaaaa")
+        .attr("stroke-width", 1)
+        .attr("font-size", 20)
+        .text(d3.format("~s")));
+
+  const tooltip = d3.select("body")
+    .selectAll("div.tooltip")
+    .data([null])
+    .join("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+
+  const showTooltip = (event, d) => {
+    const v = d.data[d.key];
+    const hour = String(d.data.hour).padStart(2, "0");
+    tooltip
+      .style("opacity", 1)
+      .html(`
+        <div><strong>${d.key}</strong></div>
+        <div>Hour: ${hour}:00</div>
+        <div>Avg orders: ${formatValue(v)}</div>
+      `);
+    moveTooltip(event);
+  };
+
+  const moveTooltip = (event) => {
+    tooltip
+      .style("left", `${event.clientX}px`)
+      .style("top", `${event.clientY}px`);
+  };
+
+  const hideTooltip = () => {
+    tooltip.style("opacity", 0);
+  };
 
   // Stacked arcs
   svg.append("g")
@@ -248,11 +279,9 @@ function renderRadialChart({ rows, region, day }) {
     .data(S => S.map(d => (d.key = S.key, d)))
     .join("path")
       .attr("d", arc)
-    .append("title")
-      .text(d => {
-        const v = d.data[d.key];
-        return `Hour ${String(d.data.hour).padStart(2, "0")}:00 — ${d.key}\nAvg orders: ${formatValue(v)}`;
-      });
+      .on("mouseenter", showTooltip)
+      .on("mousemove", moveTooltip)
+      .on("mouseleave", hideTooltip);
 
   // Hour ticks (x axis) — draw AFTER bars so labels stay on top.
   svg.append("g")
@@ -261,16 +290,17 @@ function renderRadialChart({ rows, region, day }) {
     .data(hours)
     .join("g")
       .attr("transform", h => `
-        rotate(${((x(h) + x.bandwidth() / 2) * 180 / Math.PI - 90)})
+        rotate(${((x(h) + x.bandwidth() / 2 + angleOffset) * 180 / Math.PI - 90)})
         translate(${innerRadius},0)
       `)
       .call(g => g.append("line")
         .attr("x2", -6)
         .attr("stroke", "white"))
       .call(g => g.append("text")
-        .attr("transform", h => ((x(h) + x.bandwidth() / 2 + Math.PI / 2) % (2 * Math.PI)) < Math.PI
-          ? "rotate(90)translate(0,14)"
-          : "rotate(-90)translate(0,-10)")
+        .attr("transform", h => ((x(h) + x.bandwidth() / 2 + angleOffset + Math.PI / 2) % (2 * Math.PI)) < Math.PI
+          ? "rotate(90)translate(0,24)"
+          : "rotate(-90)translate(0,-14)")
+        .attr("font-size", 18)
         .text(h => (h % 2 === 0 ? String(h) : "")))
         .attr("fill", "white");
 
@@ -280,19 +310,20 @@ function renderRadialChart({ rows, region, day }) {
     .selectAll("g")
     .data(locales)
     .join("g")
-      .attr("transform", (d, i) => `translate(0,${i * 18})`)
+      .attr("transform", (d, i) => `translate(0,${i * 35})`)
       .call(g => g.append("rect")
-        .attr("width", 12)
-        .attr("height", 12)
+        .attr("width", 30)
+        .attr("height", 30)
         .attr("fill", (d) => patternForLocale(d))
         .attr("stroke", d => styleForLocale(d).stroke)
         .attr("stroke-width", 1))
       .call(g => g.append("text")
-        .attr("x", 18)
-        .attr("y", 6)
+        .attr("x", 35)
+        .attr("y", 15)
         .attr("dy", "0.35em")
         .text(d => d))
-        .attr("fill", "white");
+        .attr("fill", "white")
+        .attr("font-size", 24);
 
   root.attr("aria-label", `Radial chart of average orders by hour for ${region} on ${day}.`);
 }
