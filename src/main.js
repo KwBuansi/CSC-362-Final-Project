@@ -231,8 +231,8 @@ function renderRadialChart({ rows, region, day }) {
       .call(g => g.append("text")
         .attr("y", d => -y(d))
         .attr("dy", "0.35em")
-        .attr("stroke", "#aaaaaa")
-        .attr("stroke-width", 1)
+        .attr("stroke", "#c5c5c5")
+        .attr("stroke-width", 2)
         .attr("font-size", 20)
         .text(d3.format("~s")));
 
