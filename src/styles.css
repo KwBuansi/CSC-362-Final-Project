@@ -70,7 +70,6 @@ path[tabindex]:focus-visible {
 
 .app-header {
   padding: 24px 0 16px;
-  border-bottom: 1px solid var(--rule);
 }
 
 h1 {
@@ -100,7 +99,6 @@ a:hover {
   gap: 24px;
   align-items: end;
   padding: 16px 0;
-  border-bottom: 1px solid var(--rule);
 }
 
 .control {
