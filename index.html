@@ -7,32 +7,24 @@
     <link rel="stylesheet" href="./src/styles.css" />
   </head>
   <body>
+    <a href="#main-content" class="skip-link">Skip to chart</a>
+
     <header class="app-header">
       <div class="container">
         <h1>Starbucks Customer Order Times by Locale</h1>
-        <p class="subtitle">Made with the help of OpenAI GPT-5.2. Data can be found <a href="cleaned_data.htm">here</a>.</p>
+        <p>Kwasi Buansi &amp; Pacis Nkubito</p>
+        <p>Original data: <a href="https://www.kaggle.com/datasets/likithagedipudi/starbucks-customer-ordering-patterns?resource=download">Kaggle Dataset</a></p>
       </div>
     </header>
 
-    <main class="container">
+    <main id="main-content" class="container">
       <section class="controls" aria-label="Chart controls">
-        <!-- <label class="control">
-          <span class="label">Top N</span>
-          <input id="topN" type="number" min="3" max="50" value="12" />
-        </label> -->
-
       </section>
 
-      <section class="card">
-        <div id="chart" class="chart-root" role="img" aria-label="Radial chart"></div>
-      </section>
+      <div id="chart-announce" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
-      <section class="card">
-        <h2>Instructions</h2>
-        <ul>
-          <li>Radial map reads clockwise.</li>
-          <li>Areas represent magnitudes. </li>
-        </ul>
+      <section class="card" aria-label="Radial chart">
+        <div id="chart" class="chart-root"></div>
       </section>
     </main>
 
