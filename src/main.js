@@ -54,7 +54,6 @@ function buildControls({ regions, days, initialRegion, initialDay, onChange }) {
 
     const select = document.createElement("select");
     select.id = id;
-    select.setAttribute("aria-label", labelText);
     for (const opt of options) {
       const o = document.createElement("option");
       o.value = opt;

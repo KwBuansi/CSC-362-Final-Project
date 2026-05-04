@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Table — Starbucks Customer Order Times</title>
+    <link rel="stylesheet" href="../src/styles.css" />
+    <style>
+      body { padding: 24px 0 48px; }
+      .back { font-size: 13px; }
+      .page-title { margin: 16px 0 4px; }
+      .meta { font-size: 13px; color: var(--muted); margin: 0 0 20px; }
+      .table-wrap { overflow-x: auto; }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13px;
+      }
+      thead th {
+        text-align: left;
+        padding: 8px 14px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--muted);
+        border-bottom: 1px solid var(--rule);
+        white-space: nowrap;
+      }
+      tbody td {
+        padding: 6px 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      tbody tr:last-child td { border-bottom: none; }
+      td:nth-child(4),
+      td:nth-child(5),
+      th:nth-child(4),
+      th:nth-child(5) { text-align: right; font-variant-numeric: tabular-nums; }
+    </style>
+  </head>
+  <body>
+    <main class="container" id="main-content">
+      <a href="../index.html" class="back">← Back to visualization</a>
+      <h1 class="page-title">Starbucks Customer Order Data</h1>
+      <p class="meta" id="meta">Loading…</p>
+      <div class="table-wrap">
+        <table id="data-table" aria-label="Starbucks average orders by locale, region, day, and hour">
+          <thead>
+            <tr>
+              <th scope="col">Locale</th>
+              <th scope="col">Region</th>
+              <th scope="col">Day</th>
+              <th scope="col">Hour</th>
+              <th scope="col">Avg Orders</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script>
+      const DAY_ORDER = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+      d3.csv("./cleaned_data.csv", d => ({
+        locale: d.locale,
+        region: d.region,
+        day: d.day,
+        hour: +d.hour,
+        average_orders: +d.average_orders,
+      })).then(rows => {
+        rows.sort((a, b) =>
+          d3.ascending(a.region, b.region) ||
+          d3.ascending(a.locale, b.locale) ||
+          (DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day)) ||
+          d3.ascending(a.hour, b.hour)
+        );
+
+        const tbody = document.getElementById("table-body");
+        for (const r of rows) {
+          const tr = tbody.insertRow();
+          tr.insertCell().textContent = r.locale;
+          tr.insertCell().textContent = r.region;
+          tr.insertCell().textContent = r.day;
+          tr.insertCell().textContent = String(r.hour).padStart(2, "0") + ":00";
+          tr.insertCell().textContent = r.average_orders.toFixed(1);
+        }
+
+        document.getElementById("meta").innerHTML =
+          `${rows.length.toLocaleString()} rows &middot; Average orders per hour by locale, region, and day`;
+      }).catch(err => {
+        document.getElementById("meta").textContent = `Failed to load data: ${err}`;
+      });
+    </script>
+  </body>
+</html>
