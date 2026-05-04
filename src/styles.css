@@ -58,13 +58,17 @@ body {
   outline-offset: 3px;
 }
 
+.chart-root path[tabindex] {
+  cursor: pointer;
+}
+
 path[tabindex]:focus-visible {
   outline: none;
   filter: drop-shadow(0 0 6px rgba(202, 162, 122, 0.9));
 }
 
 .container {
-  width: min(1100px, calc(100% - 32px));
+  width: min(1280px, calc(100% - 32px));
   margin: 0 auto;
 }
 
@@ -84,6 +88,22 @@ h1 {
   margin: 4px 0 0;
   font-size: 13px;
   color: var(--muted);
+}
+
+.app-header ul {
+  margin: 4px 0 0;
+  padding-left: 1.35em;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.app-header li {
+  margin-top: 4px;
+}
+
+.app-header li:first-child {
+  margin-top: 0;
 }
 
 a {
@@ -140,8 +160,121 @@ select:focus-visible {
   margin-bottom: 0;
 }
 
+.chart-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px 28px;
+}
+
 .chart-root {
+  flex: 1 1 520px;
+  min-width: 0;
   width: 100%;
+}
+
+.hour-detail-panel {
+  flex: 0 1 300px;
+  min-width: 260px;
+  max-width: 340px;
+  position: relative;
+  padding: 16px 18px 18px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  color: var(--text);
+}
+
+.hour-detail-panel:not([hidden]) {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.hour-detail-panel[hidden] {
+  display: none !important;
+}
+
+.hour-detail-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hour-detail-close:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.hour-detail-heading {
+  margin: 0 36px 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1.25;
+}
+
+.hour-detail-meta {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.hour-detail-meta strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hour-detail-svg-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.hour-detail-svg-wrap svg {
+  display: block;
+}
+
+.hour-detail-pct-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.hour-detail-pct-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.hour-detail-pct-list li:last-child {
+  margin-bottom: 0;
+}
+
+.hour-detail-swatch {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.hour-detail-hint {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .tooltip {

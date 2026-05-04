@@ -15,6 +15,24 @@
         <p>Authors: Kwasi Buansi &amp; Pacis Nkubito</p>
         <p>Original data: <a href="https://www.kaggle.com/datasets/likithagedipudi/starbucks-customer-ordering-patterns?resource=download">Kaggle Dataset</a> &middot; </p>
         <p>Cleaned Data: <a href="./data/table.html">View data table</a></p>
+        <p>Instructions:</p>
+        <ul>
+          <li>
+            Each tick represents an hour in the 24-hour format (military time). Read clockwise.
+          </li>
+          <li>
+            Each bar represents the average orders for that hour, split into two sub-bars by locale (urban vs. suburban).
+          </li>
+          <li>
+            Hover over a sub-bar to see the 12-hour clock conversion, and the average number of orders for that locale.
+          </li>
+          <li>
+            The area of the sub-bar represents the average number of orders for that locale.
+          </li>
+          <li>
+            Click a bar for details.
+          </li>
+        </ul>
       </div>
     </header>
 
@@ -24,8 +42,16 @@
 
       <div id="chart-announce" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
-      <section class="card" aria-label="Radial chart">
-        <div id="chart" class="chart-root"></div>
+      <section class="card chart-card" aria-label="Radial chart">
+        <div class="chart-layout">
+          <div id="chart" class="chart-root"></div>
+          <aside
+            id="hour-detail-panel"
+            class="hour-detail-panel"
+            hidden
+            aria-label="Hour breakdown"
+          ></aside>
+        </div>
       </section>
     </main>
 
