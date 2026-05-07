@@ -171,9 +171,11 @@ function renderHourDetailPanel({
 
   appendDetailPatternDefs(svg.append("defs"));
 
+  const pieData = pie(slices.filter(s => s.value > 0));
+
   const gPie = svg.append("g");
   gPie.selectAll("path")
-    .data(pie(slices.filter(s => s.value > 0)))
+    .data(pieData)
     .join("path")
       .attr("d", arcGen)
       .attr("fill", d => detailPatternFill(d.data.key))
@@ -181,15 +183,25 @@ function renderHourDetailPanel({
       .attr("stroke-width", 1.25);
 
   const pctFmt = d3.format(".1f");
+  svg.append("g")
+    .attr("class", "hour-detail-pie-labels")
+    .selectAll("text")
+    .data(pieData)
+    .join("text")
+      .attr("class", "hour-detail-pie-pct")
+      .attr("transform", d => `translate(${arcGen.centroid(d)})`)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .text(d => `${pctFmt((d.data.value / total) * 100)}%`);
+
   const ul = panel.append("ul")
     .attr("class", "hour-detail-pct-list")
-    .attr("aria-label", "Share by locale");
+    .attr("aria-label", "Average orders by locale");
 
   ul.selectAll("li")
     .data(slices)
     .join("li")
     .each(function (d) {
-      const pct = (d.value / total) * 100;
       const li = d3.select(this);
       li.append("span")
         .attr("class", "hour-detail-swatch")
@@ -197,7 +209,7 @@ function renderHourDetailPanel({
         .style("background", detailPatternFill(d.key))
         .style("border-color", detailStrokeForLocale(d.key));
       li.append("span")
-        .text(`${d.key}: ${pctFmt(pct)}% (${formatValueForDetail(d.value)} avg orders)`);
+        .text(`${d.key}: ${formatValueForDetail(d.value)} avg orders`);
     });
 
   panel.append("p")

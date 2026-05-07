@@ -244,6 +244,17 @@ select:focus-visible {
   display: block;
 }
 
+.hour-detail-pie-pct {
+  font-size: 15px;
+  font-weight: 700;
+  fill: #f5f2eb;
+  paint-order: stroke fill;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
 .hour-detail-pct-list {
   margin: 0;
   padding: 0;
