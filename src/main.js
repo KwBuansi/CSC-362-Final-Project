@@ -220,7 +220,7 @@ function renderHourDetailPanel({
 
   const ul = panel.append("ul")
     .attr("class", "hour-detail-pct-list")
-    .attr("aria-label", "Share by locale");
+    .attr("aria-label", "Average orders by locale");
 
   ul.selectAll("li")
     .data(slices)
@@ -233,7 +233,6 @@ function renderHourDetailPanel({
       activeKey ? highlightKey(activeKey) : resetHighlight();
     })
     .each(function (d) {
-      const pct = (d.value / total) * 100;
       const li = d3.select(this);
       li.append("span")
         .attr("class", "hour-detail-swatch")
@@ -241,7 +240,7 @@ function renderHourDetailPanel({
         .style("background", detailPatternFill(d.key))
         .style("border-color", detailStrokeForLocale(d.key));
       li.append("span")
-        .text(`${d.key}: ${pctFmt(pct)}% (${formatValueForDetail(d.value)} avg orders)`);
+        .text(`${d.key}: ${formatValueForDetail(d.value)} avg orders`);
     });
 
   panel.append("p")
