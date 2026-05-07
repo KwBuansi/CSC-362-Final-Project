@@ -121,6 +121,68 @@ a:hover {
   padding: 16px 0;
 }
 
+.tips-trigger {
+  position: relative;
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.tips-trigger:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tips-card {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: 230px;
+  background: #1a0f08;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  padding: 12px 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+}
+
+.tips-trigger:hover .tips-card {
+  display: block;
+}
+
+.tips-title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.tips-list {
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.tips-list li + li {
+  margin-top: 4px;
+}
+
 .control {
   display: grid;
   gap: 5px;
@@ -190,7 +252,9 @@ select:focus-visible {
 }
 
 .hour-detail-panel[hidden] {
-  display: none !important;
+  display: block !important;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .hour-detail-close {
@@ -215,7 +279,7 @@ select:focus-visible {
 }
 
 .hour-detail-heading {
-  margin: 0 36px 10px 0;
+  margin: 0 36px 4px 0;
   font-size: 16px;
   font-weight: 600;
   color: var(--accent);
@@ -223,7 +287,7 @@ select:focus-visible {
 }
 
 .hour-detail-meta {
-  margin: 0 0 14px;
+  margin: 0 0 6px;
   font-size: 13px;
   color: var(--muted);
   line-height: 1.45;
@@ -244,15 +308,12 @@ select:focus-visible {
   display: block;
 }
 
-.hour-detail-pie-pct {
-  font-size: 15px;
-  font-weight: 700;
-  fill: #f5f2eb;
-  paint-order: stroke fill;
-  stroke: rgba(0, 0, 0, 0.55);
-  stroke-width: 3px;
-  stroke-linejoin: round;
-  pointer-events: none;
+.hour-detail-svg-wrap svg path {
+  transition: opacity 0.2s ease;
+}
+
+.hour-detail-svg-wrap svg text {
+  transition: opacity 0.2s ease;
 }
 
 .hour-detail-pct-list {
@@ -267,6 +328,7 @@ select:focus-visible {
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+  transition: opacity 0.2s ease;
 }
 
 .hour-detail-pct-list li:last-child {

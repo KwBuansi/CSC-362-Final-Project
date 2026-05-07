@@ -171,7 +171,23 @@ function renderHourDetailPanel({
 
   appendDetailPatternDefs(svg.append("defs"));
 
+  const pctFmt = d3.format(".1f");
+
   const pieData = pie(slices.filter(s => s.value > 0));
+
+  let activeKey = null;
+
+  function highlightKey(key) {
+    gPie.selectAll("path").attr("opacity", d => d.data.key === key ? 1 : 0.2);
+    gPie.selectAll("text").attr("opacity", d => d.data.key === key ? 1 : 0.2);
+    ul.selectAll("li").style("opacity", d => d.key === key ? 1 : 0.25);
+  }
+
+  function resetHighlight() {
+    gPie.selectAll("path").attr("opacity", 1);
+    gPie.selectAll("text").attr("opacity", 1);
+    ul.selectAll("li").style("opacity", 1);
+  }
 
   const gPie = svg.append("g");
   gPie.selectAll("path")
@@ -180,18 +196,26 @@ function renderHourDetailPanel({
       .attr("d", arcGen)
       .attr("fill", d => detailPatternFill(d.data.key))
       .attr("stroke", d => detailStrokeForLocale(d.data.key))
-      .attr("stroke-width", 1.25);
+      .attr("stroke-width", 1.25)
+      .style("cursor", "pointer")
+      .on("mouseenter", (event, d) => highlightKey(d.data.key))
+      .on("mouseleave", () => activeKey ? highlightKey(activeKey) : resetHighlight())
+      .on("click", (event, d) => {
+        activeKey = activeKey === d.data.key ? null : d.data.key;
+        activeKey ? highlightKey(activeKey) : resetHighlight();
+      });
 
-  const pctFmt = d3.format(".1f");
-  svg.append("g")
-    .attr("class", "hour-detail-pie-labels")
-    .selectAll("text")
+  const labelArc = d3.arc().innerRadius(52).outerRadius(92);
+  gPie.selectAll("text")
     .data(pieData)
     .join("text")
-      .attr("class", "hour-detail-pie-pct")
-      .attr("transform", d => `translate(${arcGen.centroid(d)})`)
+      .attr("transform", d => `translate(${labelArc.centroid(d)})`)
       .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
+      .attr("dominant-baseline", "central")
+      .attr("font-size", "12px")
+      .attr("font-weight", "600")
+      .attr("fill", "#fff")
+      .attr("pointer-events", "none")
       .text(d => `${pctFmt((d.data.value / total) * 100)}%`);
 
   const ul = panel.append("ul")
@@ -201,6 +225,13 @@ function renderHourDetailPanel({
   ul.selectAll("li")
     .data(slices)
     .join("li")
+    .style("cursor", "pointer")
+    .on("mouseenter", (event, d) => highlightKey(d.key))
+    .on("mouseleave", () => activeKey ? highlightKey(activeKey) : resetHighlight())
+    .on("click", (event, d) => {
+      activeKey = activeKey === d.key ? null : d.key;
+      activeKey ? highlightKey(activeKey) : resetHighlight();
+    })
     .each(function (d) {
       const li = d3.select(this);
       li.append("span")
@@ -293,12 +324,15 @@ function buildControls({ regions, days, initialRegion, initialDay, onChange }) {
   return { regionSelect, daySelect };
 }
 
+// Persistent SVG state — kept alive across region/day changes for smooth transitions.
+let _radialState = null;
+
 function renderRadialChart({ rows, region, day }) {
   hideHourDetailPanel();
 
   const root = d3.select(CHART_ROOT_SELECTOR);
-  root.selectAll("*").remove();
 
+  // --- Compute new data ---
   const filtered = rows.filter(d => d.region === region && d.day === day);
   const { hours, locales: localesUnordered, wide } = byLocaleHour(filtered);
 
@@ -309,8 +343,7 @@ function renderRadialChart({ rows, region, day }) {
     ...localesUnordered.filter(l => !preferred.some(p => p.toLowerCase() === String(l).toLowerCase())),
   ];
 
-  const series = d3.stack()
-    .keys(locales)(wide);
+  const series = d3.stack().keys(locales)(wide);
 
   const x = d3.scaleBand()
     .domain(hours)
@@ -318,7 +351,6 @@ function renderRadialChart({ rows, region, day }) {
     .align(0);
 
   const angleOffset = -x.bandwidth() / 2;
-
   const benchmarkMax = 200;
   const dataMax = d3.max(series, s => d3.max(s, d => d[1])) ?? 0;
 
@@ -334,10 +366,7 @@ function renderRadialChart({ rows, region, day }) {
   const styleForLocale = (loc) => {
     const key = String(loc ?? "").toLowerCase();
     const s = LOCALE_STYLES.get(key);
-    return {
-      fill: s?.fill ?? color(loc),
-      stroke: s?.stroke ?? "#111",
-    };
+    return { fill: s?.fill ?? color(loc), stroke: s?.stroke ?? "#111" };
   };
 
   const patternForLocale = (loc) => {
@@ -357,65 +386,171 @@ function renderRadialChart({ rows, region, day }) {
     .padAngle(1.5 / innerRadius)
     .padRadius(innerRadius);
 
-  const chartTitle = `Average Starbucks orders by hour — ${region}, ${day}`;
-  const chartDesc = `Radial bar chart showing average customer orders per hour in ${region} locale areas on ${day}. Urban (dot pattern) and Suburban (stripe pattern) locales are stacked. Each segment represents one hour on a 24-hour clock. Click a segment or press Enter or Space when focused to open an urban vs suburban breakdown beside the chart.`;
+  // --- Build SVG once, reuse on subsequent calls ---
+  if (!_radialState) {
+    const svg = root.append("svg")
+      .attr("width", width)
+      .attr("viewBox", [-width / 2 - hPad, -(outerRadius + vPadTop), width + hPad * 2, outerRadius * 2 + vPadTop + vPadBot])
+      .attr("style", "width: 100%; height: auto; font: 10px sans-serif;")
+      .attr("role", "img")
+      .attr("aria-labelledby", "chart-svg-title chart-svg-desc");
 
-  const svg = root.append("svg")
-    .attr("width", width)
-    .attr("viewBox", [-width / 2 - hPad, -(outerRadius + vPadTop), width + hPad * 2, outerRadius * 2 + vPadTop + vPadBot])
-    .attr("style", "width: 100%; height: auto; font: 10px sans-serif;")
-    .attr("role", "img")
-    .attr("aria-labelledby", "chart-svg-title chart-svg-desc");
+    const titleEl = svg.append("title").attr("id", "chart-svg-title");
+    const descEl  = svg.append("desc").attr("id", "chart-svg-desc");
 
-  svg.append("title").attr("id", "chart-svg-title").text(chartTitle);
-  svg.append("desc").attr("id", "chart-svg-desc").text(chartDesc);
+    const defs = svg.append("defs");
 
-  const defs = svg.append("defs");
+    defs.append("pattern")
+      .attr("id", "pattern-suburban-diagonal")
+      .attr("patternUnits", "userSpaceOnUse")
+      .attr("width", 8).attr("height", 8)
+      .call(p => p.append("rect").attr("width", 8).attr("height", 8).attr("fill", "rgba(233, 200, 81, 0.18)"))
+      .call(p => p.append("line").attr("x1", 0).attr("y1", 2).attr("x2", 8).attr("y2", 2)
+        .attr("stroke", "rgba(184, 143, 0, 0.75)").attr("stroke-width", 2).attr("shape-rendering", "crispEdges"))
+      .call(p => p.append("line").attr("x1", 0).attr("y1", 6).attr("x2", 8).attr("y2", 6)
+        .attr("stroke", "rgba(184, 143, 0, 0.75)").attr("stroke-width", 2).attr("shape-rendering", "crispEdges"));
 
-  defs.append("pattern")
-    .attr("id", "pattern-suburban-diagonal")
-    .attr("patternUnits", "userSpaceOnUse")
-    .attr("width", 8)
-    .attr("height", 8)
-    .call(p => p.append("rect")
-      .attr("width", 8)
-      .attr("height", 8)
-      .attr("fill", "rgba(233, 200, 81, 0.18)"))
-    .call(p => p.append("line")
-      .attr("x1", 0).attr("y1", 2).attr("x2", 8).attr("y2", 2)
-      .attr("stroke", "rgba(184, 143, 0, 0.75)").attr("stroke-width", 2)
-      .attr("shape-rendering", "crispEdges"))
-    .call(p => p.append("line")
-      .attr("x1", 0).attr("y1", 6).attr("x2", 8).attr("y2", 6)
-      .attr("stroke", "rgba(184, 143, 0, 0.75)").attr("stroke-width", 2)
-      .attr("shape-rendering", "crispEdges"));
-
-  defs.append("pattern")
-    .attr("id", "pattern-urban-dots")
-    .attr("patternUnits", "userSpaceOnUse")
-    .attr("width", 10)
-    .attr("height", 10)
-    .call(p => p.append("rect")
+    defs.append("pattern")
+      .attr("id", "pattern-urban-dots")
+      .attr("patternUnits", "userSpaceOnUse")
       .attr("width", 10).attr("height", 10)
-      .attr("fill", "rgba(23, 107, 89, 0.16)"))
-    .call(p => p.append("circle")
-      .attr("cx", 3).attr("cy", 3).attr("r", 2.3)
-      .attr("fill", "rgba(23, 107, 89, 0.75)"))
-    .call(p => p.append("circle")
-      .attr("cx", 8).attr("cy", 7).attr("r", 2.3)
-      .attr("fill", "rgba(23, 107, 89, 0.75)"));
+      .call(p => p.append("rect").attr("width", 10).attr("height", 10).attr("fill", "rgba(23, 107, 89, 0.16)"))
+      .call(p => p.append("circle").attr("cx", 3).attr("cy", 3).attr("r", 2.3).attr("fill", "rgba(23, 107, 89, 0.75)"))
+      .call(p => p.append("circle").attr("cx", 8).attr("cy", 7).attr("r", 2.3).attr("fill", "rgba(23, 107, 89, 0.75)"));
 
-  const yAxis = svg.append("g").attr("text-anchor", "middle");
+    // Center label (updated on each render)
+    const centerLabel = svg.append("g").attr("text-anchor", "middle")
+      .append("text")
+        .attr("y", -y(200))
+        .attr("font-weight", 700)
+        .attr("font-size", 28)
+        .attr("fill", "white")
+        .attr("aria-hidden", "true");
 
-  yAxis.append("text")
-    .attr("y", -y(200))
-    .attr("dy", "0")
-    .attr("font-weight", 700)
-    .attr("font-size", 28)
-    .attr("fill", "white")
-    .attr("aria-hidden", "true")
-    .text(`Average orders in ${region} on ${day}`);
+    const clockG = svg.append("g")
+      .attr("text-anchor", "middle")
+      .attr("aria-hidden", "true");
 
+    clockG.append("text")
+      .attr("y", -12)
+      .attr("font-size", 15)
+      .attr("font-weight", 700)
+      .attr("letter-spacing", 2)
+      .attr("fill", "rgba(255,255,255,0.5)")
+      .attr("text-transform", "uppercase")
+      .text("24-HOUR");
+
+    clockG.append("text")
+      .attr("y", 14)
+      .attr("font-size", 15)
+      .attr("font-weight", 700)
+      .attr("letter-spacing", 2)
+      .attr("fill", "rgba(255,255,255,0.5)")
+      .text("CLOCK");
+
+    // Segments group — arcs live here
+    const segmentsGroup = svg.append("g")
+      .attr("class", "segments-group")
+      .attr("role", "list")
+      .attr("aria-label", "Chart segments");
+
+    // Hour tick marks and labels (static — hours never change)
+    svg.append("g")
+        .attr("text-anchor", "middle")
+        .attr("aria-hidden", "true")
+      .selectAll("g")
+      .data(hours)
+      .join("g")
+        .attr("transform", h => `rotate(${((x(h) + x.bandwidth() / 2 + angleOffset) * 180 / Math.PI - 90)}) translate(${innerRadius},0)`)
+        .call(g => g.append("line").attr("x2", -6).attr("stroke", "white"))
+        .call(g => g.append("g")
+          .attr("transform", `translate(${hourLabelRadius - innerRadius},0)`)
+          .append("text")
+            .attr("transform", h => {
+              const deg = (x(h) + x.bandwidth() / 2 + angleOffset) * 180 / Math.PI - 90;
+              return `rotate(${-deg})`;
+            })
+            .attr("dy", "0.32em")
+            .attr("font-size", 14)
+            .attr("fill", "white")
+            .text(h => (h % 2 === 0 ? String(h) : "")));
+
+    // Legend (static — locales never change)
+    const legend = svg.append("g")
+      .attr("transform", `translate(${-width / 2 - hPad + 24},${-(outerRadius + vPadTop) + 24})`)
+      .attr("role", "list")
+      .attr("aria-label", "Legend");
+
+    const legendItems = legend.selectAll("g")
+      .data(locales)
+      .join("g")
+        .attr("transform", (d, i) => `translate(0,${i * 35})`)
+        .attr("role", "listitem")
+        .style("cursor", "pointer")
+        .call(g => g.append("rect")
+          .attr("width", 30).attr("height", 30)
+          .attr("fill", d => patternForLocale(d))
+          .attr("stroke", d => styleForLocale(d).stroke)
+          .attr("stroke-width", 1)
+          .attr("aria-hidden", "true"))
+        .call(g => g.append("text")
+          .attr("x", 35).attr("y", 15).attr("dy", "0.35em")
+          .attr("fill", "white").attr("font-size", 24)
+          .text(d => d));
+
+    legendItems.on("click", (event, d) => {
+      event.stopPropagation();
+      const state = _radialState;
+      if (state.activeLocale === d) {
+        state.activeLocale = null;
+        state.segmentsGroup.selectAll("g.locale-group").attr("opacity", 1);
+        legendItems.attr("opacity", 1);
+      } else {
+        state.activeLocale = d;
+        state.segmentsGroup.selectAll("g.locale-group")
+          .attr("opacity", s => s.key === d ? 1 : 0.15);
+        legendItems.attr("opacity", item => item === d ? 1 : 0.4);
+      }
+    });
+
+    const resetLocale = () => {
+      if (!_radialState) return;
+      _radialState.activeLocale = null;
+      _radialState.segmentsGroup.selectAll("g.locale-group").attr("opacity", 1);
+      legendItems.attr("opacity", 1);
+    };
+
+    const closeIfOutside = (target) => {
+      const chart = document.querySelector(CHART_ROOT_SELECTOR);
+      const panel = document.querySelector(HOUR_DETAIL_SELECTOR);
+      if (!chart?.contains(target) && !panel?.contains(target)) {
+        hideHourDetailPanel();
+        if (_radialState) _radialState.segmentsGroup.selectAll("path").attr("opacity", 1);
+      }
+    };
+
+    document.addEventListener("click", (event) => {
+      resetLocale();
+      closeIfOutside(event.target);
+    });
+
+    document.addEventListener("focusout", () => {
+      requestAnimationFrame(() => closeIfOutside(document.activeElement));
+    });
+
+    _radialState = { svg, titleEl, descEl, centerLabel, segmentsGroup, activeHour: null, activeLocale: null };
+  }
+
+  const { svg, titleEl, descEl, centerLabel, segmentsGroup } = _radialState;
+
+  // Update text that changes with region/day
+  const chartTitle = `Average Starbucks orders by hour — ${region}, ${day}`;
+  const chartDesc  = `Radial bar chart showing average customer orders per hour in ${region} locale areas on ${day}. Urban (dot pattern) and Suburban (stripe pattern) locales are stacked. Each segment represents one hour on a 24-hour clock. Click a segment or press Enter or Space when focused to open an urban vs suburban breakdown beside the chart.`;
+  titleEl.text(chartTitle);
+  descEl.text(chartDesc);
+  centerLabel.text(`Average orders in ${region} on ${day}`);
+
+  // Tooltip
   const tooltip = d3.select("body")
     .selectAll("div.tooltip")
     .data([null])
@@ -426,138 +561,113 @@ function renderRadialChart({ rows, region, day }) {
 
   const showTooltipContent = (d) => {
     const v = d.data[d.key];
-    tooltip
-      .style("opacity", 1)
-      .html(`
-        <div><strong>${d.key}</strong></div>
-        <div>Hour: ${formatHourAmPm(d.data.hour)}</div>
-        <div>Avg orders: ${formatValue(v)}</div>
-      `);
+    tooltip.style("opacity", 1).html(`
+      <div><strong>${d.key}</strong></div>
+      <div>Hour: ${formatHourAmPm(d.data.hour)}</div>
+      <div>Avg orders: ${formatValue(v)}</div>
+    `);
   };
-
   const showTooltip = (event, d) => {
     showTooltipContent(d);
     tooltip.style("left", `${event.clientX}px`).style("top", `${event.clientY}px`);
   };
-
   const moveTooltip = (event) => {
     tooltip.style("left", `${event.clientX}px`).style("top", `${event.clientY}px`);
   };
-
   const showTooltipFromFocus = (event, d) => {
     showTooltipContent(d);
     const rect = event.target.getBoundingClientRect();
-    tooltip
-      .style("left", `${rect.left + rect.width / 2}px`)
-      .style("top", `${rect.top + rect.height / 2}px`);
+    tooltip.style("left", `${rect.left + rect.width / 2}px`).style("top", `${rect.top + rect.height / 2}px`);
+  };
+  const hideTooltip = () => tooltip.style("opacity", 0);
+
+  // Highlight helpers
+  const highlight = (hour) => {
+    segmentsGroup.selectAll("path").attr("opacity", d => d.data.hour === hour ? 1 : 0.15);
+  };
+  const resetHighlight = () => {
+    segmentsGroup.selectAll("path").attr("opacity", 1);
   };
 
-  const hideTooltip = () => {
-    tooltip.style("opacity", 0);
-  };
+  // --- Update arcs with data transition ---
+  const t = d3.transition().duration(750).ease(d3.easeCubicInOut);
 
-  svg.append("g")
-    .attr("role", "list")
-    .attr("aria-label", "Chart segments")
-    .selectAll("g")
-    .data(series)
+  const paths = segmentsGroup.selectAll("g.locale-group")
+    .data(series, s => s.key)
     .join("g")
+      .attr("class", "locale-group")
       .attr("role", "listitem")
       .attr("fill", d => patternForLocale(d.key))
       .attr("stroke", d => styleForLocale(d.key).stroke)
       .attr("stroke-width", 1.25)
       .attr("stroke-opacity", 1)
     .selectAll("path")
-    .data(S => S.map(d => (d.key = S.key, d)))
-    .join("path")
-      .attr("d", arc)
-      .attr("tabindex", "0")
-      .attr("role", "img")
-      .attr("aria-label", d => {
-        const v = d.data[d.key];
-        const hour = String(d.data.hour).padStart(2, "0");
-        return `${d.key}, ${hour}:00, average ${formatValue(v)} orders`;
-      })
-      .on("mouseenter", showTooltip)
-      .on("mousemove", moveTooltip)
-      .on("mouseleave", hideTooltip)
-      .on("focus", showTooltipFromFocus)
-      .on("blur", hideTooltip)
-      .on("click", (event, d) => {
-        event.stopPropagation();
-        renderHourDetailPanel({
-          hour: d.data.hour,
-          region,
-          day,
-          wide,
-          locales,
-          announceEl: document.getElementById("chart-announce"),
-        });
-      })
-      .on("keydown", (event, d) => {
-        if ((event.key === "Enter" || event.key === " ") && !event.repeat) {
-          event.preventDefault();
-          showTooltipFromFocus(event, d);
-          renderHourDetailPanel({
-            hour: d.data.hour,
-            region,
-            day,
-            wide,
-            locales,
-            announceEl: document.getElementById("chart-announce"),
-          });
-        }
+    .data(S => S.map(d => (d.key = S.key, d)), d => d.data.hour)
+    .join(
+      enter => enter.append("path")
+        .each(function(d) { this._current = [y(d[0]), y(d[0])]; })
+        .attr("d", arc),
+      update => update,
+      exit => exit.remove()
+    );
+
+  // Re-attach event handlers every render so closures reference latest region/day/wide/locales
+  paths
+    .attr("tabindex", "0")
+    .attr("role", "img")
+    .attr("aria-label", d => {
+      const v = d.data[d.key];
+      const hour = String(d.data.hour).padStart(2, "0");
+      return `${d.key}, ${hour}:00, average ${formatValue(v)} orders`;
+    })
+    .on("mouseenter", (event, d) => {
+      showTooltip(event, d);
+      highlight(d.data.hour);
+      renderHourDetailPanel({
+        hour: d.data.hour, region, day, wide, locales,
+        announceEl: document.getElementById("chart-announce"),
       });
+    })
+    .on("mousemove", moveTooltip)
+    .on("mouseleave", hideTooltip)
+    .on("focus", (event, d) => {
+      showTooltipFromFocus(event, d);
+      highlight(d.data.hour);
+      renderHourDetailPanel({
+        hour: d.data.hour, region, day, wide, locales,
+        announceEl: document.getElementById("chart-announce"),
+      });
+    })
+    .on("blur", hideTooltip)
+    .on("keydown", (event, d) => {
+      if ((event.key === "Escape") && !event.repeat) {
+        hideHourDetailPanel();
+        resetHighlight();
+      }
+    });
 
-  svg.append("g")
-      .attr("text-anchor", "middle")
-      .attr("aria-hidden", "true")
-    .selectAll("g")
-    .data(hours)
-    .join("g")
-      .attr("transform", h => `
-        rotate(${((x(h) + x.bandwidth() / 2 + angleOffset) * 180 / Math.PI - 90)})
-        translate(${innerRadius},0)
-      `)
-      .call(g => g.append("line")
-        .attr("x2", -6)
-        .attr("stroke", "white"))
-      .call(g => g.append("g")
-        .attr("transform", `translate(${hourLabelRadius - innerRadius},0)`)
-        .append("text")
-          .attr("transform", (h) => {
-            const deg = (x(h) + x.bandwidth() / 2 + angleOffset) * 180 / Math.PI - 90;
-            return `rotate(${-deg})`;
-          })
-          .attr("dy", "0.32em")
-          .attr("font-size", 14)
-          .text(h => (h % 2 === 0 ? String(h) : ""))
-          .attr("fill", "white"));
+  // Transition arc paths: interpolate computed pixel radii, not raw datum objects.
+  // d3.interpolate on a stack datum loses .data.hour/.key on intermediate values,
+  // breaking the arc generator. Instead we store [innerPx, outerPx] and interpolate those.
+  paths.transition(t)
+    .attrTween("d", function(d) {
+      const newInner = y(d[0]);
+      const newOuter = y(d[1]);
+      const [prevInner, prevOuter] = this._current || [newInner, newInner];
+      const iInner = d3.interpolateNumber(prevInner, newInner);
+      const iOuter = d3.interpolateNumber(prevOuter, newOuter);
+      this._current = [newInner, newOuter];
 
-  const legend = svg.append("g")
-    .attr("transform", `translate(${-width / 2 - hPad + 24},${-(outerRadius + vPadTop) + 24})`)
-    .attr("role", "list")
-    .attr("aria-label", "Legend");
+      const startAngle = x(d.data.hour) + angleOffset;
+      const endAngle   = x(d.data.hour) + x.bandwidth() + angleOffset;
+      const segArc = d3.arc()
+        .startAngle(startAngle)
+        .endAngle(endAngle)
+        .padAngle(1.5 / innerRadius)
+        .padRadius(innerRadius);
 
-  legend.selectAll("g")
-    .data(locales)
-    .join("g")
-      .attr("transform", (d, i) => `translate(0,${i * 35})`)
-      .attr("role", "listitem")
-      .call(g => g.append("rect")
-        .attr("width", 30)
-        .attr("height", 30)
-        .attr("fill", d => patternForLocale(d))
-        .attr("stroke", d => styleForLocale(d).stroke)
-        .attr("stroke-width", 1)
-        .attr("aria-hidden", "true"))
-      .call(g => g.append("text")
-        .attr("x", 35)
-        .attr("y", 15)
-        .attr("dy", "0.35em")
-        .text(d => d))
-        .attr("fill", "white")
-        .attr("font-size", 24);
+      return t => segArc.innerRadius(iInner(t)).outerRadius(iOuter(t))();
+    });
 
   const peakHour = wide.reduce((best, row) => {
     const total = locales.reduce((s, l) => s + (row[l] ?? 0), 0);
