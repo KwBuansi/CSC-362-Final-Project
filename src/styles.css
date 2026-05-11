@@ -172,7 +172,7 @@ a:hover {
 .tips-card {
   display: none;
   position: absolute;
-  bottom: calc(100% + 10px);
+  top: calc(100% + 10px);
   right: 0;
   width: 230px;
   background: #1a0f08;
